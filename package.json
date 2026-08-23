@@ -1,0 +1,43 @@
+{
+  "name": "abdl-bot",
+  "version": "1.0.0",
+  "description": "",
+  "main": "./src/index.ts",
+  "scripts": {
+    "build": "esbuild src/index.ts --bundle --platform=node --target=node18 --outfile=dist/index.js --format=cjs",
+    "build:watch": "esbuild src/index.ts --bundle --platform=node --target=node18 --outfile=dist/index.js --format=cjs --watch",
+    "start": "npm run build & node dist/index.js",
+    "dev": "concurrently -n \"BUILD,SERVER\" -c \"bgCyan.bold,bgGreen.bold\" \"npm run build:watch\" \"nodemon dist/index.js\""
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "devDependencies": {
+    "@eslint/js": "^9.32.0",
+    "@eslint/json": "^0.13.1",
+    "@sugarch/bc-event-handler": "^1.0.4",
+    "@sugarch/bc-mod-hook-manager": "^0.3.4",
+    "@types/lodash": "^4.17.20",
+    "@types/tracery-grammar": "^2.7.4",
+    "@typescript-eslint/eslint-plugin": "^8.38.0",
+    "@typescript-eslint/parser": "^8.38.0",
+    "concurrently": "^9.2.0",
+    "esbuild": "^0.25.9",
+    "eslint": "^9.32.0",
+    "eslint-plugin-jsonc": "^2.20.1",
+    "globals": "^16.3.0",
+    "jiti": "^2.5.1",
+    "ts-node": "^10.9.2",
+    "typescript": "^5.8.3",
+    "typescript-eslint": "^8.38.0"
+  },
+  "dependencies": {
+    "bc-bot": "^0.0.6",
+    "bc-stubs": "^130.0.0",
+    "dotenv": "^17.2.1",
+    "es-toolkit": "^1.39.10",
+    "lz-string": "^1.5.0",
+    "nodemon": "^3.1.10",
+    "tracery-grammar": "^2.8.4"
+  }
+}

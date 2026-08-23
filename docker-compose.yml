@@ -1,0 +1,30 @@
+services:
+  gluetun:
+    image: qmcgaw/gluetun
+    container_name: gluetun
+    cap_add:
+      - NET_ADMIN
+    devices:
+      - /dev/net/tun:/dev/net/tun
+    environment:
+      - VPN_SERVICE_PROVIDER=protonvpn
+      - VPN_TYPE=wireguard
+      # --- DATA FROM YOUR CONFIG ---
+      - WIREGUARD_PRIVATE_KEY=${WIREGUARD_PRIVATE_KEY}
+      - WIREGUARD_ADDRESSES=${WIREGUARD_ADDRESSES}
+      - WIREGUARD_PUBLIC_KEY=${WIREGUARD_PUBLIC_KEY}
+      - SERVER_COUNTRIES=${SERVER_COUNTRIES}
+      - FREE_ONLY=on
+      # ------------------------------
+    restart: always
+
+  node-client:
+    build: .
+    container_name: socket-client
+    network_mode: "service:gluetun" # All outgoing traffic goes through VPN
+    depends_on:
+      - gluetun
+    volumes:
+      - .:/usr/src/app
+      - /usr/src/app/node_modules # This "Anonymous Volume" protects node_modules
+    restart: always
