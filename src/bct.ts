@@ -1,4 +1,5 @@
-import { api, botData } from ".";
+import { api } from ".";
+import { botData } from "./data";
 
 const BCT_VERSION = "B.0.6.9";
 const moneyInTransaction: Transaction[] = [];
@@ -47,7 +48,6 @@ function HasInnerMessage(message: object): message is { message: object } {
   return false;
 }
 export function MessageIsMoneySend(message: object): message is { message: BCT_DictionaryMessage_MoneySend } {
-  console.log(JSON.stringify(message));
   if (!HasInnerMessage(message)) return false;
 
   const innerMessage = message.message;

@@ -5,7 +5,7 @@ export const isDiaper = (item: API_AppearanceItem | null): boolean => {
   if (!item || !item.Asset) return false;
   const assetDef = item.getAssetDef();
   if (!assetDef) return false;
-  return assetDef.DynamicGroupName + assetDef.Name in ABCLdata.Diapers;
+  return item.Group + assetDef.Name in ABCLdata.Diapers;
 };
 
 export function getPlayerDiaperSize(player: API_Character): number {
@@ -33,7 +33,7 @@ export function getDiaperSize(diaper: API_AppearanceItem): number {
     return ABCLdata.DiaperSizeScale.heavy_adult;
   }
   return ABCLdata.DiaperSizeScale[
-    ABCLdata.Diapers[(assetDef.DynamicGroupName + assetDef.Name) as keyof typeof ABCLdata.Diapers]
+    ABCLdata.Diapers[(diaper.Group + assetDef.Name) as keyof typeof ABCLdata.Diapers]
       .size as keyof typeof ABCLdata.DiaperSizeScale
   ];
 }

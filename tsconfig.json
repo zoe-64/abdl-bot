@@ -10,5 +10,5 @@
     "skipLibCheck": true,
     "noUncheckedIndexedAccess": true
   },
-  "include": ["node_modules/bc-stubs/bc/**/*.d.ts", "src/**/*"]
+  "include": ["node_modules/bc-stubs/bc/**/*.d.ts", "src/**/*", "dist"]
 }

@@ -5,9 +5,11 @@ import dotenv from "dotenv";
 import type { ABCLModStorageModel } from "./ABCL/abcl";
 import { ABCL, initABCL } from "./ABCL/abcl";
 import { getPlayerDiaperSize, hasDiaper } from "./ABCL/util";
-import type { BotData } from "./data";
+import { initCommands } from "./commands";
+import { botData, loadData, saveData } from "./data";
+import { hasPermission as hasPermissions } from "./permission";
 import { grammar } from "./tracery";
-import { sendDiscordError } from "./util";
+import { getDisplayName, sendDiscordError } from "./util";
 dotenv.config();
 
 assert(process.env.USERNAME, "USERNAME is not set");
@@ -56,7 +58,6 @@ async function rejoin() {
   ABCL.sync();
 }
 rejoin();
-export let botData: BotData;
 const ADULT_PATTERNS: RegExp[] = [
   // Matches: "I'm not little", "I am not a little kid"
   /(?:\bi\b|\bim\b)?(?:\s+\w+){0,4}\s*\bnot\b(?:\s+\w+){0,4}\s*\blittle\b/i,
@@ -91,6 +92,7 @@ export const parser = new CommandParser(api);
 async function main() {
   process.on("uncaughtException", async (err) => {
     console.error("Uncaught Exception:", err);
+    await saveData(botData);
     await sendDiscordError("Uncaught Exception", err);
   });
 
@@ -99,10 +101,7 @@ async function main() {
     await sendDiscordError("Unhandled Rejection Detected", reason);
   });
 
-  process.on("uncaughtException", async (err) => {
-    console.error("Uncaught Exception:", err);
-    await sendDiscordError("Uncaught Exception (App Crashing)", err);
-  });
+  await loadData();
   api.on("Message", ({ message, sender }) => {
     if (message.Type === "Chat") {
       if (containsAdultPhrase(message.Content.toLowerCase().trim()) && !hasDiaper(sender)) {
@@ -111,8 +110,18 @@ async function main() {
 
         if (!panties) {
           sender.Appearance.AddItem(AssetGet("Panties", "Diapers4"));
+          api.SendMessage(
+            "Emote",
+            `*${getDisplayName(api.Player)}` +
+              grammar.flatten(`[name:${getDisplayName(sender)}] #change_slide_diaper_origin#`),
+          );
         } else if (!pelvis) {
           sender.Appearance.AddItem(AssetGet("ItemPelvis", "UntrainersThin"));
+          api.SendMessage(
+            "Emote",
+            `*${getDisplayName(api.Player)}` +
+              grammar.flatten(`[name:${getDisplayName(sender)}] #change_slide_diaper_origin#`),
+          );
         }
         api.SendMessage("Chat", grammar.flatten("#little_denial_origin#"));
         return;
@@ -134,8 +143,21 @@ async function main() {
     }
   });
   initABCL();
+  initCommands();
   setTimeout(() => {
-    api.setBotDescription(``);
+    api.setBotDescription(`
+This is a bot, developed by Zoe, author of ABCL.
+It may at times do things that you might not appreciate, 
+if you want it to not interact with you then you can use:
+/bot blacklist - to blacklist 
+/bot unblacklist - to unblacklist
+
+Currently it:
+Changes diapers
+Rubs diapers / Teases babies
+Wipes puddles
+Puts padding on babies that are in denial (i.e "I'm a big girl") 
+`);
     loop();
   }, 2500);
 }
@@ -143,33 +165,38 @@ async function main() {
 main();
 
 function isInDirtyDiaper(player: API_Character, abcl: ABCLModStorageModel): boolean {
-  if (!hasDiaper(player)) return false;
+  if (!hasDiaper(player)) {
+    return false;
+  }
   const size = getPlayerDiaperSize(player);
   const wetness = abcl.Stats.Wetness.value / size;
   const soiliness = abcl.Stats.Soiliness.value / size;
-  return wetness > 0.8 || soiliness > 0.6;
+  return wetness > 0.7 || soiliness > 0.6;
 }
 function isInPuddle(player: API_Character, abcl: ABCLModStorageModel): boolean {
   return abcl.Stats.PuddleSize.value > 0;
 }
 
-async function handleChangeQueue(memberNumber: number): Promise<boolean> {
-  if (!memberNumber) return false;
-  const player = api.chatRoom?.getCharacter(memberNumber);
-  const abcl = ABCL.players.get(memberNumber);
-  if (!player || !abcl) return false;
-  if (isInPuddle(player, abcl) && Math.random() > 0.1) {
+async function handleChangeQueue(player: API_Character): Promise<boolean> {
+  if (!player) return false;
+  if (!hasPermissions(player)) return false;
+  const abcl = ABCL.players.get(player.MemberNumber);
+  if (!player || !abcl) {
+    return false;
+  }
+  const hasPuddle = isInPuddle(player, abcl) && Math.random() > 0.1;
+  if (hasPuddle) {
     api.SendMessage("Chat", grammar.flatten("#wipe_puddle_origin#"));
     // | "Frown" | "Sad" | "Pained" | "Angry" | "HalfOpen" | "Open" | "Ahegao" | "Moan" | "TonguePinch" | "LipBite" | "Happy" | "Devious" | "Laughing" | "Grin" | "Smirk" | "Pout"
     api.Player.SetExpression("Mouth", "Happy");
-    ABCL.wipePuddle(memberNumber);
-    return true;
+    ABCL.wipePuddle(player.MemberNumber);
   }
 
-  if (isInDirtyDiaper(player, abcl) && Math.random() > 0.1) {
+  if (isInDirtyDiaper(player, abcl)) {
     api.Player.SetExpression("Mouth", "Happy");
     return await ABCL.changeDiaper(player, abcl);
   }
+  if (hasPuddle) return true;
 
   if (hasDiaper(player) && Math.random() < 0.1) {
     const size = getPlayerDiaperSize(player);
@@ -179,20 +206,20 @@ async function handleChangeQueue(memberNumber: number): Promise<boolean> {
     if (wetness < 0.3 && soiliness < 0.3) {
       api.SendMessage("Chat", grammar.flatten("#patting_dry_diaper_origin#"));
       api.Player.SetExpression("Mouth", "LipBite");
-      ABCL.doActivity(memberNumber, "diaper-pat-back");
+      ABCL.doActivity(player.MemberNumber, "diaper-pat-back");
       return true;
     }
     if (wetness > 0.3 && wetness > soiliness) {
       api.SendMessage("Chat", grammar.flatten("#tease_wet_diaper_origin#"));
       api.Player.SetExpression("Mouth", "Smirk");
-      ABCL.doActivity(memberNumber, "diaper-rub-front");
+      ABCL.doActivity(player.MemberNumber, "diaper-rub-front");
       return true;
     }
 
     if (soiliness > 0.3 && soiliness > wetness) {
       api.SendMessage("Chat", grammar.flatten("#tease_messy_diaper_origin#"));
       api.Player.SetExpression("Mouth", "Smirk");
-      ABCL.doActivity(memberNumber, "diaper-rub-back");
+      ABCL.doActivity(player.MemberNumber, "diaper-rub-back");
       return true;
     }
   }
@@ -200,7 +227,8 @@ async function handleChangeQueue(memberNumber: number): Promise<boolean> {
 }
 
 async function loop() {
-  if (!api.chatRoom?.characters) return;
+  console.log("loop");
+  if (!api.chatRoom?.characters) return setTimeout(loop, 1000);
   if (api.Player.IsRestrained()) {
     api.Player.SetExpression("Mouth", "Pout");
     api.Player.Appearance.Appearance.some((item) => {
@@ -211,6 +239,8 @@ async function loop() {
       }
       return false;
     });
+    await new Promise((resolve) => setTimeout(resolve, 30000));
+    loop();
     return;
   }
   api.Player.SetActivePose(["BaseLower", "BaseUpper"]);
@@ -222,8 +252,10 @@ async function loop() {
   }
 
   for (const character of shuffled) {
-    const success = await handleChangeQueue(character.MemberNumber);
-    if (success) break;
+    const success = await handleChangeQueue(character);
+    console.log(character.Name, success);
+    if (success) await new Promise((resolve) => setTimeout(resolve, 30000));
   }
+  await new Promise((resolve) => setTimeout(resolve, 30000));
+  loop();
 }
-setInterval(loop, 40 * 1000);

@@ -5,9 +5,9 @@
   "main": "./src/index.ts",
   "scripts": {
     "build": "esbuild src/index.ts --bundle --platform=node --target=node18 --outfile=dist/index.js --format=cjs",
-    "build:watch": "esbuild src/index.ts --bundle --platform=node --target=node18 --outfile=dist/index.js --format=cjs --watch",
+    "build:watch": "esbuild src/index.ts --bundle --platform=node --target=node18 --outfile=dist/index.js --format=cjs --watch ",
     "start": "npm run build & node dist/index.js",
-    "dev": "concurrently -n \"BUILD,SERVER\" -c \"bgCyan.bold,bgGreen.bold\" \"npm run build:watch\" \"nodemon dist/index.js\""
+    "dev": "concurrently -n \"BUILD,SERVER\" -c \"bgCyan.bold,bgGreen.bold\" \"npm run build:watch\" \"nodemon dist/index.js --ignore '*.json'\""
   },
   "keywords": [],
   "author": "",

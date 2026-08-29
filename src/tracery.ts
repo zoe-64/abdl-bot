@@ -460,7 +460,7 @@ export const grammar = tracery.createGrammar({
   ],
   end_extra: ["", " much better", " all better now", " back to normal", " good as new now", " all set", " ready to go"],
   change_end_origin: [
-    "#end_opener# #end_statement#, #end_question##end_extra.capitalize##punctuation#",
+    "#end_opener# #end_statement#, #end_extra.capitalize##punctuation#",
     "#end_opener# #end_statement##end_extra##punctuation#",
     "#end_opener# #end_statement# #end_question#",
   ],
